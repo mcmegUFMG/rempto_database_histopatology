@@ -156,6 +156,132 @@ function tally(values){
   }, {});
 }
 
+function tallyDelimitedValues(data, keys, separators=/[,;|]/){
+  const counts = {};
+  data.forEach(item=>{
+    const raw = valueByKeys(item, keys);
+    if(!raw) return;
+    raw.split(separators).map(v=>v.trim()).filter(Boolean).forEach(value=>{
+      counts[value] = (counts[value]||0) + 1;
+    });
+  });
+  return counts;
+}
+
+function createCategoryCard(title, data, keys, options = {}){
+  const counts = options.delimited
+    ? tallyDelimitedValues(data, keys, options.separators)
+    : tally(data.map(item=>valueByKeys(item, keys)).filter(v=>v));
+  const entries = Object.entries(counts)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([label,value])=>({label,value}));
+  const card = document.createElement('div');
+  card.className = 'dashboard-card expandable';
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  card.appendChild(heading);
+  const hint = document.createElement('div');
+  hint.className = 'expand-hint';
+  hint.textContent = 'Clique para ampliar';
+  card.appendChild(hint);
+  if(!entries.length){
+    card.innerHTML += '<div class="empty-state">Nenhum dado disponível para este tópico.</div>';
+    return card;
+  }
+  const body = document.createElement('div');
+  body.className = 'card-body';
+  const label = `${title} por contagem`;
+  if(options.chartType === 'pie'){
+    body.appendChild(createPieChartElement(label, entries));
+  } else if(options.chartType === 'donut'){
+    body.appendChild(createDonutChartElement(label, entries));
+  } else {
+    body.appendChild(createBarChartElement(label, entries, data.length));
+  }
+  card.appendChild(body);
+  makeCardExpandable(card);
+  return card;
+}
+
+function makeCardExpandable(card){
+  card.addEventListener('click', event=>{
+    if(event.target.closest('a')) return;
+    const expanded = card.classList.contains('expanded');
+    document.querySelectorAll('.dashboard-card.expanded').forEach(c=>c.classList.remove('expanded'));
+    if(!expanded) card.classList.add('expanded');
+  });
+}
+
+function createDonutChartElement(title, counts){
+  const total = counts.reduce((sum,c)=>sum+c.value,0);
+  const wrapper = document.createElement('div');
+  wrapper.className = 'card-body';
+  const chartWrap = document.createElement('div');
+  chartWrap.className = 'pie-chart';
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox','0 0 240 240');
+  const radius = 72;
+  const center = 120;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+  const colors = ['#7a1b31','#9c2f48','#bd4561','#d96d84','#e6a5b0','#f3d9de'];
+
+  counts.forEach((count,index)=>{
+    const portion = count.value/total;
+    const dash = circumference * portion;
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',center);
+    circle.setAttribute('cy',center);
+    circle.setAttribute('r',radius);
+    circle.setAttribute('fill','none');
+    circle.setAttribute('stroke',colors[index % colors.length]);
+    circle.setAttribute('stroke-width','26');
+    circle.setAttribute('stroke-dasharray',`${dash} ${circumference-dash}`);
+    circle.setAttribute('stroke-dashoffset',circumference-offset);
+    circle.setAttribute('transform',`rotate(-90 ${center} ${center})`);
+    circle.setAttribute('stroke-linecap','round');
+    svg.appendChild(circle);
+    offset += dash;
+  });
+
+  const hole = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  hole.setAttribute('cx',center);
+  hole.setAttribute('cy',center);
+  hole.setAttribute('r',46);
+  hole.setAttribute('fill','#fff');
+  svg.appendChild(hole);
+
+  const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+  label.setAttribute('x',center);
+  label.setAttribute('y',center+6);
+  label.setAttribute('text-anchor','middle');
+  label.setAttribute('fill','#7a1b31');
+  label.setAttribute('font-size','18');
+  label.setAttribute('font-weight','700');
+  label.textContent = total;
+  svg.appendChild(label);
+
+  chartWrap.appendChild(svg);
+  const legend = document.createElement('div');
+  legend.className = 'pie-legend';
+  counts.forEach((count,index)=>{
+    const item = document.createElement('div');
+    item.className = 'pie-item';
+    const swatch = document.createElement('span');
+    swatch.className = 'pie-swatch';
+    swatch.style.background = colors[index % colors.length];
+    const labelText = document.createElement('span');
+    labelText.textContent = `${count.label} (${count.value})`;
+    item.appendChild(swatch);
+    item.appendChild(labelText);
+    legend.appendChild(item);
+  });
+
+  wrapper.appendChild(chartWrap);
+  wrapper.appendChild(legend);
+  return wrapper;
+}
+
 function createStatBar(count, total){
   const wrapper = document.createElement('div');
   wrapper.className = 'stat-row';
@@ -172,52 +298,45 @@ function createStatBar(count, total){
   return wrapper;
 }
 
-function createBarChartCard(title, counts, total){
-  const card = document.createElement('div');
-  card.className = 'dashboard-card';
-  const heading = document.createElement('h3');
-  heading.textContent = title;
-  card.appendChild(heading);
-
+function createBarChartElement(title, counts, total){
+  const wrapper = document.createElement('div');
+  wrapper.className = 'card-body';
   const chart = document.createElement('div');
   chart.className = 'bar-chart';
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
   const maxValue = Math.max(...counts.map(c=>c.value),1);
-  const rowHeight = 34;
-  const width = 400;
+  const rowHeight = 30;
+  const width = 380;
   const height = counts.length * rowHeight + 20;
   svg.setAttribute('viewBox',`0 0 ${width} ${height}`);
   counts.forEach((count,index)=>{
-    const y = index * rowHeight + 14;
-    const barWidth = Math.round((count.value / maxValue) * (width - 140));
+    const y = index * rowHeight + 16;
+    const barWidth = Math.round((count.value / maxValue) * (width - 160));
     const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
-    rect.setAttribute('x',140);
+    rect.setAttribute('x',150);
     rect.setAttribute('y',y);
     rect.setAttribute('width',barWidth);
-    rect.setAttribute('height',18);
+    rect.setAttribute('height',16);
     rect.setAttribute('fill','#7a1b31');
+    rect.setAttribute('rx','8');
     svg.appendChild(rect);
     const text = document.createElementNS('http://www.w3.org/2000/svg','text');
     text.setAttribute('x',0);
-    text.setAttribute('y',y+13);
+    text.setAttribute('y',y+12);
     text.setAttribute('fill','#111');
-    text.setAttribute('font-size','13');
+    text.setAttribute('font-size','12');
     text.textContent = `${count.label} (${count.value})`;
     svg.appendChild(text);
   });
   chart.appendChild(svg);
-  card.appendChild(chart);
-  return card;
+  wrapper.appendChild(chart);
+  return wrapper;
 }
 
-function createPieChartCard(title, counts){
+function createPieChartElement(title, counts){
   const total = counts.reduce((sum,c)=>sum+c.value,0);
-  const card = document.createElement('div');
-  card.className = 'dashboard-card';
-  const heading = document.createElement('h3');
-  heading.textContent = title;
-  card.appendChild(heading);
-
+  const wrapper = document.createElement('div');
+  wrapper.className = 'card-body';
   const chartWrap = document.createElement('div');
   chartWrap.className = 'pie-chart';
   const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -262,9 +381,9 @@ function createPieChartCard(title, counts){
     item.appendChild(label);
     legend.appendChild(item);
   });
-  card.appendChild(chartWrap);
-  card.appendChild(legend);
-  return card;
+  wrapper.appendChild(chartWrap);
+  wrapper.appendChild(legend);
+  return wrapper;
 }
 
 function renderDashboard(data){
@@ -277,12 +396,16 @@ function renderDashboard(data){
 
   const ageKeys = ['Age','Idade','Idade da paciente','Idade da amostra','Idade da amostra na coleta'];
   const stageKeys = ['Tumor Stage','Estadio','Stage','Tumor Stage','Tumor Stage'];
-  const ethnicityKeys = ['Ethnicity','ethnicity','Race','race','Etnia','Raça','etnia'];
+  const ethnicityKeys = ['Ethnicity','ethnicity','Etnia','etnia'];
+  const raceKeys = ['Race','race','Raça'];
+  const comorbidityKeys = ['Comorbidities','Comorbidities:','Comorbidity','Comorbidades','Comorbidades:'];
   const platinumKeys = ['Platinum','Sensibilidade ou resistência à platina','Platina','Platinum Status'];
 
   const ages = data.map(item=>parseFloatValue(item, ageKeys)).filter(v=>!Number.isNaN(v));
   const stages = data.map(item=>valueByKeys(item, stageKeys)).filter(v=>v);
   const ethnicities = data.map(item=>valueByKeys(item, ethnicityKeys)).filter(v=>v);
+  const races = data.map(item=>valueByKeys(item, raceKeys)).filter(v=>v);
+  const comorbidities = tallyDelimitedValues(data, comorbidityKeys);
   const platinum = data.map(item=>valueByKeys(item, platinumKeys)).filter(v=>v);
 
   const ageCard = document.createElement('div');
@@ -307,47 +430,52 @@ function renderDashboard(data){
       {label:'50-59', value: ages.filter(v=>v>=50 && v<60).length},
       {label:'60+', value: ages.filter(v=>v>=60).length},
     ];
-    ageCard.appendChild(createBarChartCard('Distribuição de idade', ageBuckets, ages.length));
+    ageCard.appendChild(createBarChartElement('Distribuição de idade', ageBuckets, ages.length));
   } else {
     ageCard.innerHTML += '<div class="empty-state">Não foi possível extrair valores de idade.</div>';
   }
+  makeCardExpandable(ageCard);
   dashboard.appendChild(ageCard);
 
-  const stageCounts = tally(stages);
-  const stageEntries = Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
-  const stageCard = document.createElement('div');
-  stageCard.className = 'dashboard-card';
-  stageCard.innerHTML = '<h3>Tumor Stage</h3>';
-  if(stageEntries.length){
-    stageCard.appendChild(createBarChartCard('Tumor stage por contagem', stageEntries, stages.length));
-  } else {
-    stageCard.innerHTML += '<div class="empty-state">Não foi possível extrair Tumor Stage.</div>';
-  }
+  const stageCard = createCategoryCard('Tumor Stage', data, stageKeys, {chartType:'bar'});
   dashboard.appendChild(stageCard);
 
-  const ethnicityCounts = tally(ethnicities);
-  const ethnicityEntries = Object.entries(ethnicityCounts).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
-  const ethnicityCard = document.createElement('div');
-  ethnicityCard.className = 'dashboard-card';
-  ethnicityCard.innerHTML = '<h3>Ethnicity / Race</h3>';
-  if(ethnicityEntries.length){
-    ethnicityCard.appendChild(createBarChartCard('Ethnicity / Race por contagem', ethnicityEntries, ethnicities.length));
-  } else {
-    ethnicityCard.innerHTML += '<div class="empty-state">Não foi possível extrair Ethnicity / Race.</div>';
-  }
+  const ethnicityCard = createCategoryCard('Ethnicity', data, ethnicityKeys, {chartType:'pie'});
   dashboard.appendChild(ethnicityCard);
 
-  const platinumCounts = tally(platinum);
-  const platinumEntries = Object.entries(platinumCounts).map(([label,value])=>({label,value}));
-  const platinumCard = document.createElement('div');
-  platinumCard.className = 'dashboard-card';
-  platinumCard.innerHTML = '<h3>Platinum</h3>';
-  if(platinumEntries.length){
-    platinumCard.appendChild(createPieChartCard('Platinum', platinumEntries));
-  } else {
-    platinumCard.innerHTML += '<div class="empty-state">Não foi possível extrair Platinum.</div>';
-  }
+  const raceCard = createCategoryCard('Race', data, raceKeys, {chartType:'pie'});
+  dashboard.appendChild(raceCard);
+
+  const comorbidityCard = createCategoryCard('Comorbidities', data, comorbidityKeys, {chartType:'bar', delimited:true, separators:/[,;|]/});
+  dashboard.appendChild(comorbidityCard);
+
+  const platinumCard = createCategoryCard('Platinum', data, platinumKeys, {chartType:'donut'});
   dashboard.appendChild(platinumCard);
+
+  const knownKeys = [...ageKeys, ...stageKeys, ...ethnicityKeys, ...raceKeys, ...comorbidityKeys, ...platinumKeys];
+  const genericKeys = Array.from(new Set(data.flatMap(Object.keys)))
+    .filter(key=>!knownKeys.includes(key))
+    .filter(key=>!/url|image|img|path|arquivo/i.test(key));
+
+  genericKeys.forEach(key=>{
+    const values = data.map(item=>valueByKeys(item,[key])).filter(v=>v);
+    const uniqueValues = Array.from(new Set(values));
+    if(!values.length || uniqueValues.length < 2 || uniqueValues.length > 20) return;
+    const counts = tally(values);
+    const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([label,value])=>({label,value}));
+    const card = document.createElement('div');
+    card.className = 'dashboard-card expandable';
+    const heading = document.createElement('h3');
+    heading.textContent = key;
+    card.appendChild(heading);
+    const hint = document.createElement('div');
+    hint.className = 'expand-hint';
+    hint.textContent = 'Clique para ampliar';
+    card.appendChild(hint);
+    card.appendChild(createBarChartElement(`${key} por contagem`, entries, data.length));
+    makeCardExpandable(card);
+    dashboard.appendChild(card);
+  });
 }
 
 function showScreen(screenId){
