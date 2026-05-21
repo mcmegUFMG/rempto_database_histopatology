@@ -8,25 +8,34 @@
 </head>
 <body>
   <header>
-    <h1>Visualizador da planilha</h1>
+    <h1>DataBase Rempto histopatalogy</h1>
     <p>Carregue os dados da planilha convertidos para <code>data.json</code>.</p>
   </header>
 
+  <div id="screenNav">
+    <button class="screenButton active" data-screen="screenList">Lista</button>
+    <button class="screenButton" data-screen="screenDashboard">Dashboard</button>
+  </div>
+
   <main>
-    <section id="sidebar">
-      <input id="filter" placeholder="Pesquisar..." />
-      <ul id="list"></ul>
+    <section id="screenList" class="screen active">
+      <section id="sidebar">
+        <input id="filter" placeholder="Pesquisar..." />
+        <div id="listContainer">
+          <ul id="list"></ul>
+        </div>
+      </section>
+
+      <section id="detail">
+        <div id="meta"></div>
+        <div id="imageContainer"></div>
+      </section>
     </section>
 
-    <section id="detail">
-      <div id="meta"></div>
-      <div id="imageContainer"></div>
+    <section id="screenDashboard" class="screen">
+      <div id="dashboard"></div>
     </section>
   </main>
-
-  <footer>
-    <small>Gerado localmente. Veja README.md para instruções.</small>
-  </footer>
 
   <script src="app.js"></script>
 </body>
