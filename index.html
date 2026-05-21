@@ -1,13 +1,33 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dashboard</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Visualizador - Planilha</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Visualizador da planilha</h1>
+    <p>Carregue os dados da planilha convertidos para <code>data.json</code>.</p>
+  </header>
+
+  <main>
+    <section id="sidebar">
+      <input id="filter" placeholder="Pesquisar..." />
+      <ul id="list"></ul>
+    </section>
+
+    <section id="detail">
+      <div id="meta"></div>
+      <div id="imageContainer"></div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Gerado localmente. Veja README.md para instruções.</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
 </html>
