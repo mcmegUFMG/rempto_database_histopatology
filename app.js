@@ -1,4 +1,4 @@
-async function loadData(){
+﻿async function loadData(){
   try{
     const res = await fetch('data.json');
     if(!res.ok) throw new Error('Failed to load data.json');
@@ -10,6 +10,12 @@ async function loadData(){
     return [];
   }
 }
+
+const SUPABASE_URL = 'https://azmvechuxtfrcxwmblpz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF6bXZlY2h1eHRmcmN4d21ibHB6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NDI5OTgsImV4cCI6MjA5NjUxODk5OH0.BOBesX6ZfE7LnY5TZOk6fkf1AcP_cIXird_sJCVpVpk';
+const supabaseClient = window.supabase?.createClient
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 function detectImageKey(item){
   const keys = Object.keys(item);
@@ -50,7 +56,7 @@ function createValueElement(key, value){
 
 function getItemLabel(item, idx){
   const keys = [
-    'Identificador único da paciente',
+    'Identificador Ãºnico da paciente',
     'Nome do arquivo da imagem',
     'Identificador amostra',
     'Patient ID',
@@ -261,7 +267,7 @@ function createCategoryCard(title, data, keys, options = {}){
   heading.textContent = title;
   card.appendChild(heading);
   if(!entries.length){
-    card.innerHTML += '<div class="empty-state">Nenhum dado disponível para este tópico.</div>';
+    card.innerHTML += '<div class="empty-state">Nenhum dado disponÃ­vel para este tÃ³pico.</div>';
     return card;
   }
   const body = document.createElement('div');
@@ -596,7 +602,7 @@ function renderDashboard(data){
   const dashboard = document.getElementById('dashboard');
   dashboard.innerHTML = '';
   if(!data.length){
-    dashboard.innerHTML = '<div class="empty-state">Nenhum dado disponível para gerar estatísticas.</div>';
+    dashboard.innerHTML = '<div class="empty-state">Nenhum dado disponÃ­vel para gerar estatÃ­sticas.</div>';
     return;
   }
 
@@ -605,9 +611,9 @@ function renderDashboard(data){
   const histologyKeys = ['Histological Type','Histologia','HistologicalType','Histological Type'];
   const tumorGradeKeys = ['Tumor Grade','Grau do Tumor','TumorGrade','Tumor Grade'];
   const ethnicityKeys = ['Ethnicity','ethnicity','Etnia','etnia'];
-  const raceKeys = ['Race','race','Raça'];
+  const raceKeys = ['Race','race','RaÃ§a'];
   const comorbidityKeys = ['Comorbidities','Comorbidities:','Comorbidity','Comorbidades','Comorbidades:'];
-  const platinumKeys = ['Platinum','Sensibilidade ou resistência à platina','Platina','Platinum Status'];
+  const platinumKeys = ['Platinum','Sensibilidade ou resistÃªncia Ã  platina','Platina','Platinum Status'];
 
   const ages = data.map(item=>parseFloatValue(item, ageKeys)).filter(v=>!Number.isNaN(v));
   const stages = data.map(item=>valueByKeys(item, stageKeys)).filter(v=>v);
@@ -638,9 +644,9 @@ function renderDashboard(data){
       {label:'50-59', value: ages.filter(v=>v>=50 && v<60).length},
       {label:'60+', value: ages.filter(v=>v>=60).length},
     ];
-    ageCard.appendChild(createColumnChartElement('Distribuição de idade', ageBuckets, ages.length));
+    ageCard.appendChild(createColumnChartElement('DistribuiÃ§Ã£o de idade', ageBuckets, ages.length));
   } else {
-    ageCard.innerHTML += '<div class="empty-state">Não foi possível extrair valores de idade.</div>';
+    ageCard.innerHTML += '<div class="empty-state">NÃ£o foi possÃ­vel extrair valores de idade.</div>';
   }
   dashboard.appendChild(ageCard);
 
@@ -676,13 +682,16 @@ function renderDashboard(data){
     return acc;
   }, {});
   if(Object.keys(hgsocCounts).length){
-    const hgsocEntries = Object.entries(hgsocCounts).map(([label, value]) => ({ label, value }));
+    const hgsocEntries = Object.entries(hgsocCounts).map(([label, value]) => {
+      const displayLabel = label === 'HGSOC_MP' ? 'Mario Penna' : label === 'HGSOC_NIH' ? 'NIH' : label;
+      return { label: displayLabel, value };
+    });
     const hgsocCard = document.createElement('div');
     hgsocCard.className = 'dashboard-card';
     const hgsocHeading = document.createElement('h3');
-    hgsocHeading.textContent = 'HGSOC_MP vs HGSOC_NIH';
+    hgsocHeading.textContent = 'Pacientes por banco';
     hgsocCard.appendChild(hgsocHeading);
-    hgsocCard.appendChild(createDonutChartElement('Distribuição de casos', hgsocEntries, {
+    hgsocCard.appendChild(createDonutChartElement('Banco de pacientes', hgsocEntries, {
       chartRadius: 120,
       strokeWidth: 32,
       centerFontSize: 30,
@@ -747,10 +756,6 @@ function showScreen(screenId){
   });
 }
 
-const SUPABASE_URL = 'https://YOUR_SUPABASE_PROJECT_URL.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
-const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 function setupScreens(){
   const buttons = Array.from(document.querySelectorAll('.screenButton'));
   buttons.forEach(button=>{
@@ -760,109 +765,6 @@ function setupScreens(){
       showScreen(button.dataset.screen);
     });
   });
-}
-
-function getAuthEmail(username){
-  if(!username) return '';
-  const trimmed = String(username).trim();
-  return trimmed.includes('@') ? trimmed : `${trimmed}@rempto.local`;
-}
-
-async function getSupabaseSession(){
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if(error) {
-    console.error('Supabase session error', error);
-    return null;
-  }
-  return session;
-}
-
-async function fetchProfileByUsername(username){
-  const { data, error } = await supabase.from('profiles')
-    .select('id, user_id, username, status, role, created_at')
-    .eq('username', username)
-    .maybeSingle();
-  if(error) return { error };
-  return { profile: data };
-}
-
-async function fetchProfileByUserId(userId){
-  const { data, error } = await supabase.from('profiles')
-    .select('id, user_id, username, status, role, created_at')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if(error) return { error };
-  return { profile: data };
-}
-
-async function listProfiles(status){
-  let query = supabase.from('profiles')
-    .select('id, user_id, username, status, role, created_at')
-    .order('created_at', { ascending: false });
-  if(status){
-    query = query.eq('status', status);
-  }
-  const { data, error } = await query;
-  if(error) return { error };
-  return { profiles: data || [] };
-}
-
-async function createProfile(userId, username){
-  const { data, error } = await supabase.from('profiles')
-    .insert({ user_id: userId, username, status: 'pending', role: 'user' })
-    .single();
-  if(error) return { error };
-  return { profile: data };
-}
-
-async function updateProfileStatus(profileId, status){
-  const { error } = await supabase.from('profiles').update({ status }).eq('id', profileId);
-  if(error) console.error('Erro ao atualizar status', error);
-}
-
-async function signOutSupabase(){
-  await supabase.auth.signOut();
-  clearCurrentUser();
-}
-
-function saveCurrentUser(current){
-  sessionStorage.setItem('remptoCurrentUser', JSON.stringify(current));
-}
-
-function getCurrentUser(){
-  const json = sessionStorage.getItem('remptoCurrentUser');
-  if(!json) return null;
-  try{
-    return JSON.parse(json);
-  } catch {
-    return null;
-  }
-}
-
-function clearCurrentUser(){
-  sessionStorage.removeItem('remptoCurrentUser');
-}
-
-async function restoreSessionState(){
-  const session = await getSupabaseSession();
-  if(!session?.user) return null;
-  const { profile, error } = await fetchProfileByUserId(session.user.id);
-  if(error || !profile) {
-    await signOutSupabase();
-    return null;
-  }
-  if(profile.status !== 'approved'){
-    await signOutSupabase();
-    return null;
-  }
-  const current = {
-    username: profile.username,
-    role: profile.role || 'user',
-    userId: profile.user_id,
-    profileId: profile.id
-  };
-  saveCurrentUser(current);
-  return current;
 }
 
 function showLoginScreen(){
@@ -910,7 +812,7 @@ async function renderPendingRequests(){
     pending.innerHTML = '<p>Não há cadastros pendentes.</p>';
     return;
   }
-  profiles.forEach(profile => {
+  profiles.forEach(profile=>{
     const card = document.createElement('div');
     card.className = 'pending-card';
     const info = document.createElement('span');
@@ -937,7 +839,7 @@ async function renderPendingRequests(){
     actions.appendChild(reject);
     card.appendChild(info);
     card.appendChild(actions);
-    card.appendChild(createStatusBadge('pending'));
+    card.appendChild(createStatusBadge(profile.status || 'pending'));
     pending.appendChild(card);
   });
 }
@@ -955,7 +857,7 @@ async function renderRegisteredUsers(){
     container.innerHTML = '<p>Nenhum usuário cadastrado.</p>';
     return;
   }
-  profiles.forEach(profile => {
+  profiles.forEach(profile=>{
     const card = document.createElement('div');
     card.className = 'user-card';
     const info = document.createElement('div');
@@ -972,6 +874,106 @@ async function renderRegisteredUsers(){
     card.appendChild(info);
     container.appendChild(card);
   });
+}
+
+function getAuthEmail(username){
+  if(!username) return '';
+  const value = String(username).trim().toLowerCase();
+  return value.includes('@') ? value : `${value}@rempto.local`;
+}
+
+async function getSupabaseSession(){
+  if(!supabaseClient) return null;
+  const { data, error } = await supabaseClient.auth.getSession();
+  if(error){
+    console.error('getSession error', error);
+    return null;
+  }
+  return data.session;
+}
+
+async function fetchProfileByUserId(userId){
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .select('id,user_id,username,status,role')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if(error) return { error };
+  return { profile: data };
+}
+
+async function listProfiles(status){
+  let query = supabaseClient
+    .from('profiles')
+    .select('id,user_id,username,status,role')
+    .order('username', { ascending: true });
+  if(status){
+    query = query.eq('status', status);
+  }
+  const { data, error } = await query;
+  if(error) return { error };
+  return { profiles: data || [] };
+}
+
+async function createProfile(userId, username){
+  const { data, error } = await supabaseClient
+    .from('profiles')
+    .insert({ user_id: userId, username, status: 'pending', role:'user' })
+    .select()
+    .single();
+  return { data, error };
+}
+
+async function updateProfileStatus(profileId, status){
+  const { error } = await supabaseClient
+    .from('profiles')
+    .update({ status })
+    .eq('id', profileId);
+  if(error) console.error('updateProfileStatus error', error);
+}
+
+async function signOutSupabase(){
+  if(!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  clearCurrentUser();
+}
+
+function saveCurrentUser(current){
+  sessionStorage.setItem('remptoCurrentUser', JSON.stringify(current));
+}
+
+function getCurrentUser(){
+  const json = sessionStorage.getItem('remptoCurrentUser');
+  if(!json) return null;
+  try{
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function clearCurrentUser(){
+  sessionStorage.removeItem('remptoCurrentUser');
+}
+
+async function restoreSessionState(){
+  const session = await getSupabaseSession();
+  const user = session?.user;
+  if(!user) return null;
+  const { profile, error } = await fetchProfileByUserId(user.id);
+  if(error || !profile) return null;
+  if(profile.status !== 'approved'){
+    await signOutSupabase();
+    return null;
+  }
+  const current = {
+    username: profile.username,
+    role: profile.role || 'user',
+    userId: profile.user_id,
+    profileId: profile.id
+  };
+  saveCurrentUser(current);
+  return current;
 }
 
 function clearAuthFields(){
@@ -1008,7 +1010,12 @@ function showRegisterError(message){
   if(registerError) registerError.textContent = message;
 }
 
-async function setupLogin(){
+function showGeneralError(message){
+  showLoginError(message);
+  showRegisterError(message);
+}
+
+function setupLogin(){
   const loginButton = document.getElementById('loginButton');
   const userInput = document.getElementById('loginUser');
   const passInput = document.getElementById('loginPass');
@@ -1019,7 +1026,7 @@ async function setupLogin(){
   const authTabLogin = document.getElementById('authTabLogin');
   const authTabRegister = document.getElementById('authTabRegister');
 
-  async function submitLogin(){
+  const submitLogin = async () => {
     const username = userInput.value.trim();
     const password = passInput.value.trim();
     if(!username || !password){
@@ -1027,38 +1034,35 @@ async function setupLogin(){
       return;
     }
     const email = getAuthEmail(username);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if(error){
-      showLoginError('Usuário ou senha inválidos.');
+      showLoginError(error.message || 'Erro ao fazer login.');
       return;
     }
-    const user = data.user;
+    const user = data.user || data.session?.user;
     if(!user){
       showLoginError('Não foi possível autenticar.');
       return;
     }
     const { profile, error: profileError } = await fetchProfileByUserId(user.id);
     if(profileError || !profile){
-      await supabase.auth.signOut();
-      showLoginError('Perfil de usuário não encontrado.');
+      showLoginError('Perfil não encontrado.');
       return;
     }
     if(profile.status === 'pending'){
-      await supabase.auth.signOut();
       showLoginError('Cadastro aguardando aprovação.');
       return;
     }
     if(profile.status === 'rejected'){
-      await supabase.auth.signOut();
       showLoginError('Cadastro recusado. Entre em contato com o administrador.');
       return;
     }
-    clearAuthFields();
     saveCurrentUser({ username: profile.username, role: profile.role || 'user', userId: user.id, profileId: profile.id });
+    clearAuthFields();
     await showApp();
-  }
+  };
 
-  async function submitRegister(){
+  const submitRegister = async () => {
     const username = registerUser.value.trim();
     const password = registerPass.value.trim();
     const confirm = registerConfirm.value.trim();
@@ -1074,54 +1078,39 @@ async function setupLogin(){
       showRegisterError('Nome de usuário inválido.');
       return;
     }
-    const { profile: existingProfile } = await fetchProfileByUsername(username);
-    if(existingProfile){
-      showRegisterError('Este usuário já existe.');
-      return;
-    }
     const email = getAuthEmail(username);
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: { data: { username } }
+    });
     if(error){
       showRegisterError(error.message || 'Erro ao cadastrar usuário.');
       return;
     }
-    const user = data.user;
-    if(!user){
-      showRegisterError('Erro ao criar conta.');
-      return;
+    const user = data.user || data.session?.user;
+    if(user){
+      const { error: profileError } = await createProfile(user.id, username);
+      if(profileError){
+        console.error('createProfile error', profileError);
+      }
     }
-    const { profile, error: createError } = await createProfile(user.id, username);
-    if(createError){
-      showRegisterError('Erro ao salvar perfil de usuário.');
-      await supabase.auth.signOut();
-      return;
-    }
-    await supabase.auth.signOut();
-    showRegisterError('Cadastro enviado para aprovação. Aguarde a aprovação do administrador.');
+    showRegisterError('Cadastro realizado. Aguarde aprovação do administrador.');
     registerUser.value = '';
     registerPass.value = '';
     registerConfirm.value = '';
-  }
+  };
 
-  authTabLogin.addEventListener('click', ()=>{
-    showAuthMode('login');
-  });
-  authTabRegister.addEventListener('click', ()=>{
-    showAuthMode('register');
-  });
-
+  authTabLogin.addEventListener('click', ()=>{ showAuthMode('login'); });
+  authTabRegister.addEventListener('click', ()=>{ showAuthMode('register'); });
   loginButton.addEventListener('click', submitLogin);
   registerButton.addEventListener('click', submitRegister);
 
   [userInput, passInput].forEach(input=>{
-    input.addEventListener('keydown', event=>{
-      if(event.key === 'Enter') submitLogin();
-    });
+    input.addEventListener('keydown', event=>{ if(event.key === 'Enter') submitLogin(); });
   });
   [registerUser, registerPass, registerConfirm].forEach(input=>{
-    input.addEventListener('keydown', event=>{
-      if(event.key === 'Enter') submitRegister();
-    });
+    input.addEventListener('keydown', event=>{ if(event.key === 'Enter') submitRegister(); });
   });
 }
 
@@ -1136,6 +1125,31 @@ function setupLogout(){
   });
 }
 
+function isAuthenticated(){
+  return !!getCurrentUser();
+}
+
+async function ensureAuthReady(){
+  const session = await getSupabaseSession();
+  if(!session) return null;
+  const user = session.user;
+  if(!user) return null;
+  const { profile, error } = await fetchProfileByUserId(user.id);
+  if(error || !profile) return null;
+  if(profile.status !== 'approved'){
+    await signOutSupabase();
+    return null;
+  }
+  const current = {
+    username: profile.username,
+    role: profile.role || 'user',
+    userId: profile.user_id,
+    profileId: profile.id
+  };
+  saveCurrentUser(current);
+  return current;
+}
+
 document.addEventListener('DOMContentLoaded',async ()=>{
   const data = await loadData();
   renderList(data);
@@ -1144,7 +1158,7 @@ document.addEventListener('DOMContentLoaded',async ()=>{
   setupScreens();
   setupLogin();
   setupLogout();
-  const restored = await restoreSessionState();
+  const restored = await ensureAuthReady();
   if(restored){
     await showApp();
   } else {
