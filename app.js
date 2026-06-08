@@ -837,7 +837,19 @@ function saveStoredUsers(users){
   localStorage.setItem('remptoUsers', JSON.stringify(users));
 }
 
+function clearAuthFields(){
+  ['loginUser','loginPass','registerUser','registerPass','registerConfirm'].forEach(id=>{
+    const input = document.getElementById(id);
+    if(input) input.value = '';
+  });
+  const loginError = document.getElementById('loginError');
+  const registerError = document.getElementById('registerError');
+  if(loginError) loginError.textContent = '';
+  if(registerError) registerError.textContent = '';
+}
+
 function showAuthMode(mode){
+  clearAuthFields();
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   const loginTab = document.getElementById('authTabLogin');
@@ -886,6 +898,7 @@ function setupLogin(){
     localStorage.setItem('remptoAuthenticated', 'true');
     saveCurrentUser(username);
     loginError.textContent = '';
+    clearAuthFields();
     showApp();
   };
 
@@ -946,6 +959,7 @@ function setupLogout(){
   logoutButton.addEventListener('click', ()=>{
     localStorage.removeItem('remptoAuthenticated');
     clearCurrentUser();
+    clearAuthFields();
     showAuthMode('login');
     showLoginScreen();
   });
