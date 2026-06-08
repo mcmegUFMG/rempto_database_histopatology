@@ -11,13 +11,54 @@
     <h1>DataBase Rempto histopatlogy</h1>
   </header>
 
-  <div id="screenNav">
+  <div id="screenNav" class="hidden">
     <button class="screenButton active" data-screen="screenList">Lista</button>
     <button class="screenButton" data-screen="screenDashboard">Dashboard</button>
+    <button id="adminButton" class="screenButton hidden" data-screen="screenAdmin">Admin</button>
+    <button id="logoutButton" class="logout-button" type="button">Logout</button>
   </div>
 
   <main>
-    <section id="screenList" class="screen active">
+    <section id="screenLogin" class="screen active">
+      <div class="login-panel">
+        <div class="auth-toggle">
+          <button id="authTabLogin" type="button" class="auth-tab active">Login</button>
+          <button id="authTabRegister" type="button" class="auth-tab">Cadastrar</button>
+        </div>
+        <div id="loginForm" class="auth-form">
+          <h2>Login</h2>
+          <div class="login-field">
+            <label for="loginUser">Usuário</label>
+            <input id="loginUser" type="text" placeholder="Digite seu usuário" autocomplete="username" />
+          </div>
+          <div class="login-field">
+            <label for="loginPass">Senha</label>
+            <input id="loginPass" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+          </div>
+          <button id="loginButton" type="button" class="login-button">Entrar</button>
+          <p id="loginError" class="login-error"></p>
+        </div>
+        <div id="registerForm" class="auth-form hidden">
+          <h2>Cadastro</h2>
+          <div class="login-field">
+            <label for="registerUser">Usuário</label>
+            <input id="registerUser" type="text" placeholder="Escolha um usuário" autocomplete="username" />
+          </div>
+          <div class="login-field">
+            <label for="registerPass">Senha</label>
+            <input id="registerPass" type="password" placeholder="Escolha uma senha" autocomplete="new-password" />
+          </div>
+          <div class="login-field">
+            <label for="registerConfirm">Confirme a senha</label>
+            <input id="registerConfirm" type="password" placeholder="Repita a senha" autocomplete="new-password" />
+          </div>
+          <button id="registerButton" type="button" class="login-button">Cadastrar</button>
+          <p id="registerError" class="login-error"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="screenList" class="screen">
       <section id="sidebar">
         <input id="filter" placeholder="Pesquisar..." />
         <div id="listContainer">
@@ -33,6 +74,13 @@
 
     <section id="screenDashboard" class="screen">
       <div id="dashboard"></div>
+    </section>
+
+    <section id="screenAdmin" class="screen">
+      <div class="admin-panel">
+        <h2>Cadastros pendentes</h2>
+        <div id="pendingRequests"></div>
+      </div>
     </section>
   </main>
 

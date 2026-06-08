@@ -727,11 +727,242 @@ function setupScreens(){
   });
 }
 
+function showLoginScreen(){
+  document.getElementById('screenNav').classList.add('hidden');
+  showAuthMode('login');
+  showScreen('screenLogin');
+}
+
+function showApp(){
+  const screenNav = document.getElementById('screenNav');
+  screenNav.classList.remove('hidden');
+  const adminButton = document.getElementById('adminButton');
+  const current = getCurrentUser();
+  if(current && current.role === 'admin'){
+    adminButton.classList.remove('hidden');
+    renderPendingRequests();
+  } else {
+    adminButton.classList.add('hidden');
+  }
+  showScreen('screenList');
+}
+
+function renderPendingRequests(){
+  const pending = document.getElementById('pendingRequests');
+  if(!pending) return;
+  const users = getStoredUsers().filter(u=>u.status === 'pending');
+  pending.innerHTML = '';
+  if(!users.length){
+    pending.innerHTML = '<p>Não há cadastros pendentes.</p>';
+    return;
+  }
+  users.forEach(user=>{
+    const card = document.createElement('div');
+    card.className = 'pending-card';
+    const info = document.createElement('span');
+    info.textContent = user.username;
+    const actions = document.createElement('div');
+    actions.className = 'pending-actions';
+    const approve = document.createElement('button');
+    approve.className = 'approve';
+    approve.type = 'button';
+    approve.textContent = 'Aprovar';
+    approve.addEventListener('click', ()=>{
+      updateUserStatus(user.username, 'approved');
+      renderPendingRequests();
+    });
+    const reject = document.createElement('button');
+    reject.className = 'reject';
+    reject.type = 'button';
+    reject.textContent = 'Recusar';
+    reject.addEventListener('click', ()=>{
+      updateUserStatus(user.username, 'rejected');
+      renderPendingRequests();
+    });
+    const status = document.createElement('span');
+    status.className = 'status';
+    status.textContent = 'Pendente';
+    actions.appendChild(approve);
+    actions.appendChild(reject);
+    card.appendChild(info);
+    card.appendChild(actions);
+    card.appendChild(status);
+    pending.appendChild(card);
+  });
+}
+
+function updateUserStatus(username, status){
+  const users = getStoredUsers();
+  const user = users.find(u=>u.username === username);
+  if(!user) return;
+  user.status = status;
+  saveStoredUsers(users);
+}
+
+function isAuthenticated(){
+  return localStorage.getItem('remptoAuthenticated') === 'true';
+}
+
+function getCurrentUser(){
+  const username = localStorage.getItem('remptoCurrentUser');
+  if(!username) return null;
+  return getStoredUsers().find(u=>u.username === username) || null;
+}
+
+function saveCurrentUser(username){
+  localStorage.setItem('remptoCurrentUser', username);
+}
+
+function clearCurrentUser(){
+  localStorage.removeItem('remptoCurrentUser');
+}
+
+function ensureAdminUser(){
+  const users = getStoredUsers();
+  if(!users.some(u=>u.role === 'admin')){
+    users.push({username:'admin', password:'admin', role:'admin', status:'approved'});
+    saveStoredUsers(users);
+  }
+}
+
+function getStoredUsers(){
+  try{
+    return JSON.parse(localStorage.getItem('remptoUsers') || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveStoredUsers(users){
+  localStorage.setItem('remptoUsers', JSON.stringify(users));
+}
+
+function showAuthMode(mode){
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  const loginTab = document.getElementById('authTabLogin');
+  const registerTab = document.getElementById('authTabRegister');
+  const isLogin = mode === 'login';
+  loginForm.classList.toggle('hidden', !isLogin);
+  registerForm.classList.toggle('hidden', isLogin);
+  loginTab.classList.toggle('active', isLogin);
+  registerTab.classList.toggle('active', !isLogin);
+}
+
+function setupLogin(){
+  const loginButton = document.getElementById('loginButton');
+  const userInput = document.getElementById('loginUser');
+  const passInput = document.getElementById('loginPass');
+  const loginError = document.getElementById('loginError');
+  const registerButton = document.getElementById('registerButton');
+  const registerUser = document.getElementById('registerUser');
+  const registerPass = document.getElementById('registerPass');
+  const registerConfirm = document.getElementById('registerConfirm');
+  const registerError = document.getElementById('registerError');
+  const authTabLogin = document.getElementById('authTabLogin');
+  const authTabRegister = document.getElementById('authTabRegister');
+
+  const submitLogin = () => {
+    const username = userInput.value.trim();
+    const password = passInput.value.trim();
+    if(!username || !password){
+      loginError.textContent = 'Informe usuário e senha para continuar.';
+      return;
+    }
+    const users = getStoredUsers();
+    const user = users.find(u=>u.username === username && u.password === password);
+    if(!user){
+      loginError.textContent = 'Usuário ou senha inválidos.';
+      return;
+    }
+    if(user.status === 'pending'){
+      loginError.textContent = 'Cadastro aguardando aprovação.';
+      return;
+    }
+    if(user.status === 'rejected'){
+      loginError.textContent = 'Cadastro recusado. Entre em contato com o administrador.';
+      return;
+    }
+    localStorage.setItem('remptoAuthenticated', 'true');
+    saveCurrentUser(username);
+    loginError.textContent = '';
+    showApp();
+  };
+
+  const submitRegister = () => {
+    const username = registerUser.value.trim();
+    const password = registerPass.value.trim();
+    const confirm = registerConfirm.value.trim();
+    if(!username || !password || !confirm){
+      registerError.textContent = 'Preencha todos os campos para se cadastrar.';
+      return;
+    }
+    if(password !== confirm){
+      registerError.textContent = 'As senhas não coincidem.';
+      return;
+    }
+    const users = getStoredUsers();
+    if(users.some(u=>u.username === username)){
+      registerError.textContent = 'Este usuário já existe.';
+      return;
+    }
+    if(username.toLowerCase() === 'admin'){
+      registerError.textContent = 'Nome de usuário inválido.';
+      return;
+    }
+    users.push({username, password, role:'user', status:'pending'});
+    saveStoredUsers(users);
+    registerError.textContent = 'Cadastro enviado para aprovação. Aguarde a aprovação do administrador.';
+    registerUser.value = '';
+    registerPass.value = '';
+    registerConfirm.value = '';
+  };
+
+  authTabLogin.addEventListener('click', ()=>{
+    showAuthMode('login');
+  });
+  authTabRegister.addEventListener('click', ()=>{
+    showAuthMode('register');
+  });
+
+  loginButton.addEventListener('click', submitLogin);
+  registerButton.addEventListener('click', submitRegister);
+
+  [userInput, passInput].forEach(input=>{
+    input.addEventListener('keydown', event=>{
+      if(event.key === 'Enter') submitLogin();
+    });
+  });
+  [registerUser, registerPass, registerConfirm].forEach(input=>{
+    input.addEventListener('keydown', event=>{
+      if(event.key === 'Enter') submitRegister();
+    });
+  });
+}
+
+function setupLogout(){
+  const logoutButton = document.getElementById('logoutButton');
+  if(!logoutButton) return;
+  logoutButton.addEventListener('click', ()=>{
+    localStorage.removeItem('remptoAuthenticated');
+    clearCurrentUser();
+    showAuthMode('login');
+    showLoginScreen();
+  });
+}
+
 document.addEventListener('DOMContentLoaded',async ()=>{
   const data = await loadData();
   renderList(data);
   renderDashboard(data);
   setupFilter(data);
+  ensureAdminUser();
   setupScreens();
-  showScreen('screenList');
+  setupLogin();
+  setupLogout();
+  if(isAuthenticated()){
+    showApp();
+  } else {
+    showLoginScreen();
+  }
 });
