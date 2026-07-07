@@ -150,9 +150,21 @@ function parseFloatValue(item, keys){
   return Number.isFinite(parsed) ? parsed : NaN;
 }
 
+function normalizeTumorGradeValue(text){
+  const normalized = String(text || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (/^G[1-4]$/.test(normalized)) return normalized;
+  if (/^[1-4]$/.test(normalized)) return `G${normalized}`;
+  if (normalized === 'GX') return 'GX';
+  if (normalized === 'GB') return 'GB';
+  return String(text).trim();
+}
+
 function normalizeChartValue(key, value){
   if(value===undefined || value===null) return '';
   const text = String(value).trim();
+  if(/tumor\s*grade|grau.*tumor/i.test(key)){
+    return normalizeTumorGradeValue(text);
+  }
   if(/lymph.*vascular|vascular.*lymph/i.test(key)){
     if(/^\?{1,2}$/.test(text)) return 'N/A';
   }
@@ -181,6 +193,15 @@ function normalizeChartValue(key, value){
     if(/^N\/?A$/i.test(text)) return 'N/A';
   }
   return text;
+}
+
+function gradeLabelOrder(label){
+  const normalized = String(label || '').trim().toUpperCase();
+  const match = normalized.match(/^G([1-4])$/);
+  if(match) return Number(match[1]);
+  if(normalized === 'GB') return 98;
+  if(normalized === 'GX') return 99;
+  return 100;
 }
 
 function tally(values, key){
@@ -254,7 +275,12 @@ function createCategoryCard(title, data, keys, options = {}){
     ? tallyDelimitedValues(data, keys, options.separators, keys[0])
     : tally(data.map(item=>valueByKeys(item, keys)).filter(v=>v), keys[0]);
   const entries = Object.entries(counts)
-    .sort((a,b)=>b[1]-a[1])
+    .sort((a,b)=>{
+      if(/tumor\s*grade|grau.*tumor/i.test(title)){
+        return gradeLabelOrder(a[0]) - gradeLabelOrder(b[0]) || b[1] - a[1];
+      }
+      return b[1]-a[1];
+    })
     .map(([label,value])=>({label,value}));
   const card = document.createElement('div');
   card.className = 'dashboard-card';
